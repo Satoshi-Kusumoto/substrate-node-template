@@ -4,8 +4,10 @@
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 
+use sp_std::prelude::*;
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get};
 use frame_system::ensure_signed;
+pub use crate::weight_info::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -13,10 +15,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod weight_info;
+
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Trait: frame_system::Trait {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
+	type WeightInfo: WeightInfo;
 }
 
 // The pallet's runtime storage items.
@@ -29,7 +35,11 @@ decl_storage! {
 		// Learn more about declaring storage items:
 		// https://substrate.dev/docs/en/knowledgebase/runtime/storage#declaring-storage-items
 		Something get(fn something): Option<u32>;
+
+		TestVec get(fn test_vec): map hasher(blake2_128_concat) T::AccountId => Vec<u8>;
+
 	}
+
 }
 
 // Pallets use events to inform users when important changes are made.
@@ -80,6 +90,33 @@ decl_module! {
 			// Return a successful DispatchResult
 			Ok(())
 		}
+
+		#[weight = T::WeightInfo::test(<self::Module<T>>::test_vec(&account).len() as u32)]
+		// #[weight = T::WeightInfo::test(*index)]
+		pub fn test(
+			origin,
+			account: T::AccountId,
+			index: u32,
+			addr: u8,
+		) -> dispatch::DispatchResult {
+		
+			let _ = ensure_signed(origin)?;
+		
+			let index = index as usize;
+			let mut addrs = Self::test_vec(&account);
+			if (index >= addrs.len()) && (addrs.len() != 3) { // allow linking 3 eth addresses. TODO: do not use hard code
+				addrs.push(addr);
+			} else if (index >= addrs.len()) && (addrs.len() == 3) {
+				addrs[2] = addr;
+			} else {
+				addrs[index] = addr;
+			}
+		
+			<TestVec<T>>::insert(account, addrs);
+		
+			Ok(())
+		
+		}		
 
 		/// An example dispatchable that may throw a custom error.
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]

@@ -261,9 +261,12 @@ impl pallet_sudo::Trait for Runtime {
 	type Call = Call;
 }
 
+mod weights;
+
 /// Configure the template pallet in pallets/template.
 impl pallet_template::Trait for Runtime {
 	type Event = Event;
+	type WeightInfo = weights::pallet_template::WeightInfo<Self>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
